@@ -1,0 +1,416 @@
+#!/bin/bash
+WALLCHAR="\e[100m \e[0m"
+NOCHAR="\e[0m "
+HOUSECHAR="\e[41m \e[0m"
+RESTCHAR="\e[42m \e[0m"
+
+AREA=0                     #Determines what area to draw
+ZONE=0                     #Determines possible enemies
+
+STR=5                      #Determines sword attack damage
+MGB=5                      #Determines magic damage
+MGW=5                      #Determines magic heal
+CHP=15                     #Current health
+CMP=12                     #Current mana
+MMP=12                     #Max mana
+MHP=15                     #Max health
+DEF=3                      #Sword damage reduction
+MGD=2                      #Magic damage reduction
+HRANK=1                    #Heal spell rank
+MRANK=1                    #Attack spell rank
+
+#Improvement requirements
+HRANKR=6
+MRANKR=6
+MGBR=3
+MGWR=3
+STRR=3
+MMPR=7
+MHPR=7
+HRANKU=0
+MRANKU=0
+MGBU=0
+MGWU=0
+STRU=0
+MMPU=0
+MHPU=0
+
+LOSE="NO"
+WIN="NO"
+
+FIRSTROW=3
+FIRSTCOL=1
+LASTROW=30
+LASTCOL=60
+
+
+drawborder() {
+   x=$FIRSTROW
+   y=$FIRSTCOL
+   while [ "$x" -le "$LASTROW" ]; do
+         while [ "$y" -le "$LASTCOL" ]; do
+            tput cup $x $y
+            printf " "
+            y=$(( $y + 1 ))
+         done
+      x=$(( $x + 1 ))
+   done
+   # Draw top
+   tput setf 6
+   tput cup $FIRSTROW $FIRSTCOL
+   x=$FIRSTCOL
+   while [ "$x" -le "$LASTCOL" ];
+   do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+
+   # Draw sides
+   x=$FIRSTROW
+   while [ "$x" -le "$LASTROW" ];
+   do
+      tput cup $x $FIRSTCOL; 
+      printf %b "$WALLCHAR"
+      tput cup $x $LASTCOL; 
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+
+   # Draw bottom
+   tput cup $LASTROW $FIRSTCOL
+   x=$FIRSTCOL
+   while [ "$x" -le "$LASTCOL" ];
+   do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+   tput setf 9
+}
+
+mage(){
+   ENAME=Mage
+   EMAG=6
+   ECHP=10
+   EMHP=10
+   EDEF=1
+   EMGD=5
+   USES="MAG"
+}
+
+warrior(){
+   ENAME=Warrior
+   ESTR=5
+   ECHP=10
+   EMHP=10
+   EDEF=4
+   EMGD=1
+   USES="STR"
+}
+
+encounter(){
+   R=$(($RANDOM%2+1))
+   drawborder
+   x=$FIRSTCOL
+   y=$(( $LASTROW - 4 ))
+   tput cup $y $x
+   while [ "$x" -le "$LASTCOL" ]; do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+#   case "$ZONE" in
+#      1) case "$R" in
+   case $R in
+            1) mage
+               combat;;
+            2) warrior
+               combat;;
+#         esac;;
+#      2) case "$R" in
+#            1) enemy1 
+#               combat;;
+#            2) enemy2 
+#               combat;;
+#         esac
+   esac
+#   combat
+}
+
+improve(){
+   if [ "$STRU" -ge "$STRR" ]; then
+      STRU=$(( $STRU - $(( $STRR )) ))
+      STRR=$(( $STRR + 3 ))
+      STR=$(( $STR + 1 ))
+   fi
+   if [ "$MGBU" -ge "$MGBR" ]; then
+      MGBU=$(( $MGBU - $(( $MGBR )) ))
+      MGBR=$(( $MGBR + 3 ))
+      MGB=$(( $MGB + 1 ))
+   fi
+   if [ "$MRANKU" -ge "$MRANKR" ]; then
+      MRANKU=$(( $MRANKU - $(( $MRANKR )) ))
+      MRANKR=$(( $MRANKR + 6 ))
+      MRANK=$(( $MRANK + 1 ))
+   fi
+   if [ "$MGWU" -ge "$MGWR" ]; then
+      MGWU=$(( $MGWU - $(( $MGWR )) ))
+      MGWR=$(( $MGWR + 3 ))
+      MGW=$(( $MGW + 1 ))
+   fi
+   if [ "$HRANKU" -ge "$HRANKR" ]; then
+      HRANKU=$(( $HRANKU - $(( $HRANKR )) ))
+      HRANKR=$(( $HRANKR + 6 ))
+      HRANK=$(( $HRANK + 1 ))
+   fi
+   if [ "$MHPU" -ge "$MHPR" ]; then
+      MHPU=$(( $MHPU - $(( $MHPR )) ))
+      MHPR=$(( $MHPR + 7 ))
+      MHP=$(( $MHP + 2 ))
+   fi
+   if [ "$MMPU" -ge "$MMPR" ]; then
+      MMPU=$(( $MMPU - $(( $MMPR )) ))
+      MMPR=$(( $MMPR + 7 ))
+      MMP=$(( $MMP + 1 ))
+   fi
+}
+swordattack(){
+   if [ "$STR" -gt "$EDEF" ]; then
+      ECHP=$(( $ECHP - $(( $STR - $(( $EDEF )) )) ))
+   else
+      ECHP=$(( $ECHP - 1 ))
+   fi
+   STRU=$(( $STRU + 1 ))
+   if [ "$ECHP" -le 0 ]; then
+      #echo ok
+      WIN="YES"
+   fi
+}
+spellattack(){
+   MAGDMG=$(( $MGB + $(( $(( $MRANK - 1 )) * 4 )) ))
+   if [ "$MAGDMG" -gt "$(( $EMGD ))" ]; then
+      ECHP=$(( $ECHP - $(( $(( $MAGDMG )) - $(( $EMGD )) )) ))
+   else
+      ECHP=$(( $ECHP - 1 ))
+   fi
+   if [ "$ECHP" -le 0 ]; then
+      #echo ok
+      WIN="YES"
+   fi
+   CMP=$(( $CMP - 3 ))
+   MGBU=$(( $MGBU + 1 ))
+   MMPU=$(( $MMPU + 1 ))
+   MRANKU=$(( $MRANKU + 1 ))
+}
+spellheal(){
+   CHP=$(( $CHP + $(( $MGW )) + $(( $(( $HRANK - 1 )) * 3 )) ))
+   if [ $CHP -gt $MHP ]; then
+      CHP=$MHP
+   fi
+   CMP=$(( $CMP - 2 ))
+   MGWU=$(( $MGWU + 1 ))
+   MMPU=$(( $MMPU + 1 ))
+   HRANKU=$(( $HRANKU + 1 ))
+}
+
+enemyattack(){
+   if [ "$ESTR" -gt "$(( $DEF ))" ]; then
+      CHP=$(( $CHP - $(( $ESTR - $(( $DEF )) )) ))
+   else
+      CHP=$(( $CHP - 1 ))
+   fi
+   if [ "$CHP" -le 0 ]; then
+      LOSE="YES"
+   fi
+   MHPU=$(( $MHPU + 1 ))
+}
+enemyspell(){
+   if [ "$EMAG" -gt "$(( $MGD ))" ]; then
+      CHP=$(( $CHP - $(( $EMAG - $(( $MGD )) )) ))
+   else
+      CHP=$(( $CHP - 1 ))
+   fi
+   if [ "$CHP" -le 0 ]; then
+      #echo ok
+      LOSE="YES"
+   fi
+   MHPU=$(( $MHPU + 1 ))
+}
+
+combat(){
+   chardata
+   while [ "$WIN" == "NO" ]; do
+      read -s -n 1 key
+      case "$key" in
+         j) swordattack
+            combatdata
+            if [ "$WIN" == "NO" ]; then
+               case "$USES" in
+                  STR) enemyattack;;
+                  MAG) enemyspell;;
+               esac
+               ecombatdata
+               if [ "$CHP" -le 0 ]; then
+                  LOSE="YES"
+               fi
+               MHPU=$(( $MHPU + 1 ))
+            fi
+            ;;
+         k) if [ $CMP -ge 3 ]; then
+               spellattack
+               combatdata
+               if [ "$WIN" == "NO" ]; then
+               case "$USES" in
+                  STR) enemyattack;;
+                  MAG) enemyspell;;
+               esac
+               ecombatdata
+               fi
+            else
+               tput cup $(( $LASTROW - 2 )) $(( $FIRSTCOL + 8 ))
+               echo "Not enough MP"
+            fi
+            ;;
+         l) if [ $CMP -ge 2 ]; then
+               spellheal
+               combatdata
+               if [ "$WIN" == "NO" ]; then
+               case "$USES" in
+                  STR) enemyattack;;
+                  MAG) enemyspell;;
+               esac
+               ecombatdata
+               fi
+            else
+               tput cup $(( $LASTROW - 2 )) $(( $FIRSTCOL + 8 ))
+               echo "Not enough MP"
+            fi
+            ;;
+      esac
+      key=" "
+      chardata
+      if [ "$LOSE" == "YES" ]; then
+         y=$(( $LASTROW - 2 ))
+         x=$(( $FIRSTCOL + 8 ))
+         tput cup $y $x
+         echo "You have lost"
+         WIN="YES"
+         sleep 1
+      fi
+   done
+   improve
+   WIN="NO"
+   CMP=$(( $CMP +$(( $MMP / 4 )) ))
+   if [ "$CMP" -gt $(( $MMP )) ]; then
+      CMP=$MMP
+   fi
+}
+combatdata(){
+   y=$(( $LASTROW - 2 ))
+   x=$(( $FIRSTCOL + 8 ))
+   tput cup $y $x
+   case "$key" in
+      l) echo -e "Recovered $(( $MGW + ($HRANK - 1) * 3 )) HP";;
+      j) if [ "$STR" -gt "$EDEF" ]; then
+            echo -e "Dealt $(( $STR - $(( $EDEF )) )) damage"
+         else
+            echo -e "Dealt $(( $ECHP - 1 )) damage"
+         fi;;
+      k) if [ "$MAGDMG" -gt "$(( $EMGD ))" ]; then
+            echo -e "Dealt $(( $(( $MAGDMG )) - $(( $EMGD )) )) damage"
+         else
+            echo -e "Dealt $(( $ECHP - 1 )) damage"
+         fi;;
+   esac
+   chardata
+   sleep 0.75
+   y=$(( $LASTROW - 2 ))
+   x=$(( $FIRSTCOL + 1 ))
+   tput cup $y $x
+   while [ "$(( $x + 1 ))" -le "$(( $LASTCOL - 1 ))" ]; do
+      printf %b " "
+      x=$(( $x + 1 ));
+   done
+}
+ecombatdata(){
+   x=$FIRSTCOL
+   y=$(( $LASTROW - 4 ))
+   tput cup $y $x
+   while [ "$x" -le "$LASTCOL" ]; do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+   y=$(( $LASTROW - 2 ))
+   x=$(( $FIRSTCOL + 8 ))
+   tput cup $y $x
+   case "$USES" in
+      STR) if [ "$ESTR" -gt "$(( $DEF ))" ]; then
+              echo -e "Recieved $(( $ESTR - $(( $DEF )) )) damage"
+           else
+              echo -e "Recieved $(( $CHP - 1 )) damage"
+           fi;;
+      MAG) if [ "$EMAG" -gt "$(( $MGD ))" ]; then
+              echo -e "Recieved $(( $EMAG - $(( $MGD )) )) damage"
+           else
+              echo -e "Recieved $(( $CHP - 1 )) damage"
+           fi;;
+   esac
+   chardata
+   sleep 0.75
+   y=$(( $LASTROW - 2 ))
+   x=$(( $FIRSTCOL + 1 ))
+   tput cup $y $x
+   while [ "$(( $x + 1 ))" -le "$(( $LASTCOL - 1 ))" ]; do
+      printf %b " "
+      x=$(( $x + 1 ));
+   done
+}
+
+chardata(){
+   x=8
+   y=8
+   tput cup $y $x
+   echo -e "                 "
+   tput cup $y $x
+   if [ "$CHP" -gt 0 ]; then
+      echo -e "HP: $CHP/$MHP"
+   else
+      echo -e "HP: 0/$MHP"
+   fi
+   tput cup $(( $y + 1 )) $x
+   echo -e "                 "
+   tput cup $(( $y + 1 )) $x
+   echo -e "MP: $CMP/$MMP"
+   tput cup $(( $y + 3 )) $x
+   echo -e "J: Attack - $STR damage"
+   tput cup $(( $y + 4 )) $x
+   echo -e "K: Attack spell - $(( $MGB + ($MRANK - 1) * 4 )) damage"
+   tput cup $(( $y + 5 )) $x
+   echo -e "L: Heal spell - $(( $MGW + ($HRANK - 1) * 3 )) recovery"
+
+   x=8
+   y=17
+   tput cup $y $x
+   echo -e "                 "
+   tput cup $y $x
+   echo -e "$ENAME"
+   tput cup $(( $y + 1 )) $x
+   echo -e "                 "
+   tput cup $(( $y + 1 )) $x
+   if [ "$ECHP" -gt 0 ]; then
+      echo -e "HP: $ECHP/$EMHP"
+   else
+      echo -e "HP: 0/$EMHP"
+   fi
+}
+
+clear
+tput civis
+stty -echo
+while [ "$LOSE" == "NO" ]; do
+   encounter
+done
+y=$(( $LASTROW + 1 ))
+x=$FIRSTCOL
+tput cup $y $x
+clear
+tput cvvis
+stty echo
