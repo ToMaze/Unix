@@ -1,0 +1,947 @@
+#!/bin/bash
+#. /Desktop/area1
+WALLCHAR="\e[100m \e[0m"
+NOCHAR="\e[0m "
+HOUSECHAR="\e[41m \e[0m"
+RESTCHAR="\e[42m \e[0m"
+DOORCHAR="\e[43m \e[0m"
+
+AREA=1                     #Determines what area to draw
+ZONE=0                     #Determines possible enemies
+
+STR=5                      #Determines sword attack damage
+MAG=5                      #Determines magic damage and magic healing
+CHP=15                     #Current health
+CMP=12                     #Current mana
+MMP=12                     #Max mana
+MHP=15                     #Max health
+DEF=3                      #Sword damage reduction
+MGD=2                      #Magic damage reduction
+HRANK=0                    #Heal spell rank
+MRANK=0                    #Attack spell rank
+
+#Improvement requirements
+HRANKR=7
+MRANKR=6
+MAGR=3
+STRR=2
+MMPR=6
+MHPR=7
+HRANKU=0
+MRANKU=0
+MAGU=0
+STRU=0
+MMPU=0
+MHPU=0
+
+LOSE="NO"
+WIN="NO"
+
+
+MINY=3
+MINX=1
+MAXY=30
+MAXX=59
+POSY=$(( $MAXY / 2 ))
+POSX=$(( $MAXX / 2 + 1 ))
+POS="v"
+WALLTEST="OK"
+R=0
+FIGHT="NO"
+OPEN="NO"
+KILLCOUNT=0
+
+house(){
+   x=2
+   y=4
+   while [ "$x" -le 6 ]; do
+      tput cup $y $x
+      echo -e $HOUSECHAR
+      x=$(( $x + 1 ))
+   done
+   x=2
+   y=5
+   while [ "$x" -le 6 ]; do
+      tput cup $y $x
+      echo -e $HOUSECHAR
+      x=$(( $x + 1 ))
+   done
+   x=2
+   y=6
+   while [ "$x" -le 6 ]; do
+      tput cup $y $x
+      echo -e $HOUSECHAR
+      x=$(( $x + 1 ))
+   done
+   x=4
+   y=6
+   tput cup $y $x
+   echo -e $DOORCHAR
+}
+drawborder() {
+   x=$MINY
+   y=$MINX
+   while [ "$x" -le "$MAXY" ]; do
+         while [ "$y" -le "$MAXX" ]; do
+            tput cup $x $y
+            printf %b " "
+            y=$(( $y + 1 ))
+         done
+      x=$(( $x + 1 ))
+   done
+   # Draw top
+   tput setf 6
+   tput cup $MINY $MINX
+   x=$MINX
+   while [ "$x" -le "$MAXX" ];
+   do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+
+   # Draw sides
+   x=$MINY
+   while [ "$x" -le "$MAXY" ];
+   do
+      tput cup $x $MINX; 
+      printf %b "$WALLCHAR"
+      tput cup $x $MAXX; 
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+
+   # Draw bottom
+   tput cup $MAXY $MINX
+   x=$MINX
+   while [ "$x" -le "$MAXX" ];
+   do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+   tput setf 9
+}
+drawarea(){
+   case $AREA in
+      1) drawarea1;;
+      2) drawarea2;;
+   esac
+}
+drawarea1(){
+ZONE=1
+drawborder
+house
+if [ $OPEN = "YES" ]; then
+   open
+fi
+}
+open(){
+tput cup 20 $MAXX
+echo " "
+tput cup 21 $MAXX
+echo " "
+tput cup 22 $MAXX
+echo " "
+tput cup 23 $MAXX
+echo " "
+}
+drawarea2(){
+ZONE=2
+drawborder
+tput cup 20 $MINX
+echo " "
+tput cup 21 $MINX
+echo " "
+tput cup 22 $MINX
+echo " "
+tput cup 23 $MINX
+echo " "
+}
+
+mage(){
+   ENAME=Mage
+   EMAG=6
+   ECHP=10
+   EMHP=10
+   EDEF=0
+   EMGD=5
+   USES="MAG"
+}
+warrior(){
+   ENAME=Warrior
+   ESTR=5
+   ECHP=10
+   EMHP=10
+   EDEF=4
+   EMGD=1
+   USES="STR"
+}
+mage1(){
+   ENAME=ArchMage
+   EMAG=12
+   ECHP=50
+   EMHP=50
+   EDEF=0
+   EMGD=10
+   USES="MAG"
+}
+warrior1(){
+   ENAME=Knight
+   ESTR=7
+   ECHP=75
+   EMHP=75
+   EDEF=8
+   EMGD=2
+   USES="STR"
+}
+
+encounter(){
+   clear
+   R=$(($RANDOM%2+1))
+   drawborder
+   x=$MINX
+   y=$(( $MAXY - 4 ))
+   tput cup $y $x
+   while [ "$x" -le "$MAXX" ]; do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+   case "$ZONE" in
+      1) case "$R" in
+            1) mage
+               combat;;
+            2) warrior
+               combat;;
+         esac;;
+      2) case "$R" in
+            1) mage1 
+               combat;;
+            2) warrior1 
+               combat;;
+         esac
+   esac
+}
+improve(){
+   if [ "$STRU" -ge "$STRR" ]; then
+      STRU=$(( $STRU - $(( $STRR )) ))
+      STRR=$(( $STRR + 2 ))
+      STR=$(( $STR + 1 ))
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "STR +1!"
+      sleep 0.75
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "                "
+   fi
+   if [ "$MAGU" -ge "$MAGR" ]; then
+      MAGU=$(( $MAGU - $(( $MAGR )) ))
+      MAGR=$(( $MAGR + 3 ))
+      MAG=$(( $MAG + 1 ))
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "MAG +1!"
+      sleep 0.75
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "                "
+   fi
+   if [ "$MRANKU" -ge "$MRANKR" ]; then
+      MRANKU=$(( $MRANKU - $(( $MRANKR )) ))
+      MRANKR=$(( $MRANKR + 6 ))
+      MRANK=$(( $MRANK + 1 ))
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "Attack Spell rank up!"
+      sleep 0.75
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "                      "
+   fi
+   if [ "$HRANKU" -ge "$HRANKR" ]; then
+      HRANKU=$(( $HRANKU - $(( $HRANKR )) ))
+      HRANKR=$(( $HRANKR + 5 ))
+      HRANK=$(( $HRANK + 1 ))
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "Heal Spell rank up!"
+      sleep 0.75
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "                      "
+   fi
+   if [ "$MHPU" -ge "$MHPR" ]; then
+      MHPU=$(( $MHPU - $(( $MHPR )) ))
+      MHPR=$(( $MHPR + 7 ))
+      MHP=$(( $MHP + 2 ))
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "Max HP +2!"
+      sleep 0.75
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "                      "
+   fi
+   if [ "$MMPU" -ge "$MMPR" ]; then
+      MMPU=$(( $MMPU - $(( $MMPR )) ))
+      MMPR=$(( $MMPR + 6 ))
+      MMP=$(( $MMP + 1 ))
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "Max MP +1!"
+      sleep 0.75
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "                      "
+   fi
+}
+swordattack(){
+   if [ "$STR" -gt "$EDEF" ]; then
+      ECHP=$(( $ECHP - $(( $STR - $(( $EDEF )) )) ))
+   else
+      ECHP=$(( $ECHP - 1 ))
+   fi
+   STRU=$(( $STRU + 1 ))
+   if [ "$ECHP" -le 0 ]; then
+      #echo ok
+      WIN="YES"
+   fi
+}
+spellattack(){
+   MAGDMG=$(( $MAG + $(( $MRANK * 3 )) ))
+   if [ "$MAGDMG" -gt "$(( $EMGD ))" ]; then
+      ECHP=$(( $ECHP - $(( $(( $MAGDMG )) - $(( $EMGD )) )) ))
+   else
+      ECHP=$(( $ECHP - 1 ))
+   fi
+   if [ "$ECHP" -le 0 ]; then
+      #echo ok
+      WIN="YES"
+   fi
+   CMP=$(( $CMP - 3 ))
+   MAGU=$(( $MAGU + 1 ))
+   MMPU=$(( $MMPU + 1 ))
+   MRANKU=$(( $MRANKU + 1 ))
+}
+spellheal(){
+   CHP=$(( $CHP + $(( $MAG )) + $(( $HRANK * 2 )) ))
+   if [ $CHP -gt $MHP ]; then
+      CHP=$MHP
+   fi
+   CMP=$(( $CMP - 2 ))
+   MAGU=$(( $MAGU + 1 ))
+   MMPU=$(( $MMPU + 1 ))
+   HRANKU=$(( $HRANKU + 1 ))
+}
+moveheal(){
+   x=$MINX
+   y=$(( $MAXY - 4 ))
+   if [ $POSY -ge $(( $y )) ]; then
+      remove
+   fi
+   tput cup $y $x
+   while [ "$x" -le "$MAXX" ]; do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+   if [ $CMP -ge 2 ]; then
+      CHP=$(( $CHP + $(( $MAG )) + $(( $(( $HRANK - 1 )) * 2 )) ))
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "Recovered $(( $(( $MAG )) + $(( $(( $HRANK - 1 )) * 2 )) )) HP"
+      CMP=$(( $CMP - 2 ))
+      sleep 0.75
+   else
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "Not enough MP"
+      sleep 0.75
+   fi
+   x=$(( $MINX + 1 ))
+   y=$(( $MAXY - 4 ))
+   tput cup $y $x
+   while [ "$x" -le "$(( $MAXX - 1 ))" ]; do
+      printf %b " "
+      x=$(( $x + 1 ));
+   done
+   y=$(( $MAXY - 2 ))
+   x=$(( $MINX + 8 ))
+   tput cup $y $x
+   echo "                        "
+   place
+}
+
+enemyattack(){
+   if [ "$ESTR" -gt "$(( $DEF ))" ]; then
+      CHP=$(( $CHP - $(( $ESTR - $(( $DEF )) )) ))
+   else
+      CHP=$(( $CHP - 1 ))
+   fi
+   if [ "$CHP" -le 0 ]; then
+      LOSE="YES"
+   fi
+   MHPU=$(( $MHPU + 1 ))
+}
+enemyspell(){
+   if [ "$EMAG" -gt "$(( $MGD ))" ]; then
+      CHP=$(( $CHP - $(( $EMAG - $(( $MGD )) )) ))
+   else
+      CHP=$(( $CHP - 1 ))
+   fi
+   if [ "$CHP" -le 0 ]; then
+      #echo ok
+      LOSE="YES"
+   fi
+   MHPU=$(( $MHPU + 1 ))
+}
+
+interact(){
+   if [ $POSX -eq 4 ] && [ $POSY -eq 7 ] && [ $POS == "^" ]; then
+      x=4
+      y=6
+      tput cup $y $x
+      echo "v"
+      x=$MINX
+      y=$(( $MAXY - 4 ))
+      tput cup $y $x
+      while [ "$x" -le "$MAXX" ]; do
+         printf %b "$WALLCHAR"
+         x=$(( $x + 1 ));
+      done
+      if [ $FIGHT = "NO" ]; then
+         y=$(( $MAXY - 2 ))
+         x=$(( $MINX + 8 ))
+         tput cup $y $x
+         echo "Welcome to the arena. Fight until you drop!"
+         FIGHT="YES"
+         ZONE=1
+         sleep 2
+         y=$(( $MAXY - 2 ))
+         x=$(( $MINX + 8 ))
+         tput cup $y $x
+         while [ "$x" -le "$(( $MAXX - 1 ))" ]; do
+            printf %b " "
+            x=$(( $x + 1 ));
+         done
+      fi
+      if [ $KILLCOUNT -ge 20 ]; then
+         open
+         OPEN="YES"
+         y=$(( $MAXY - 2 ))
+         x=$(( $MINX + 8 ))
+         tput cup $y $x
+         echo "You defeated 20 enemies! Go on to the next area!"
+         sleep 2
+      else
+         y=$(( $MAXY - 2 ))
+         x=$(( $MINX + 8 ))
+         tput cup $y $x
+         echo "Defeat 20 enemies to open the next area."
+         sleep 2
+      fi
+      x=$(( $MINX + 1 ))
+      y=$(( $MAXY - 4 ))
+      tput cup $y $x
+      while [ "$x" -le "$(( $MAXX - 1 ))" ]; do
+         printf %b " "
+         x=$(( $x + 1 ));
+      done
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      while [ "$x" -le "$(( $MAXX - 1 ))" ]; do
+         printf %b " "
+         x=$(( $x + 1 ));
+      done
+      x=4
+      y=6
+      tput cup $y $x
+      echo -e $DOORCHAR
+   fi
+}
+walk(){
+   tput cup $POSY $POSX
+   printf %b "v"
+   while [ "$LOSE" == "NO" ]; do
+#      while [ "$key" == " " ]; do
+         read -s -n 1 key
+#      done
+      setmove
+      case $AREA in 
+         1) testmove1;;
+         2) testmove2;;
+      esac
+      if [ $WALLTEST = "OK" ]; then
+         move
+      else
+         place
+      fi
+      WALLTEST="OK"
+#      key=" "
+      if [ $R -eq 1 ]; then
+         remove
+         if [ $FIGHT == "YES" ]; then
+            encounter
+            endcombat
+         fi
+         place
+      fi
+   done
+}
+setmove(){
+   case "$key" in
+      w) POS="^";;
+      a) POS="<";;
+      s) POS="v";;
+      d) POS=">";;
+   esac
+}
+move(){
+   case "$key" in
+      w) remove
+         POSY=$(( $POSY - 1 ))
+         R=$(($RANDOM%8+1))
+         place;;
+      s) remove
+         POSY=$(( $POSY + 1 ))
+         R=$(($RANDOM%8+1))
+         place;;
+      a) remove
+         POSX=$(( $POSX - 2 ))
+         R=$(($RANDOM%8+1))
+         place;;
+      d) remove
+         POSX=$(( $POSX + 2 ))
+         R=$(($RANDOM%8+1))
+         place;;
+      l) moveheal;;
+      k) status;;
+      j) interact;;
+   esac
+   key=" "
+}   
+testmove1(){
+   case "$key" in
+      w) if [ $POSY -gt $(( $MINY + 1 )) ]; then
+            if [ $POSY -le 7 ] && [ $POSX -le 7 ]; then
+               WALLTEST="NO"
+            else
+               WALLTEST="OK"
+            fi
+         else
+            WALLTEST="NO"
+         fi;;
+      a) if [ $POSX -gt $(( $MINX + 1 )) ]; then
+            if [ $POSY -le 6 ] && [ $POSX -le 8 ]; then
+               WALLTEST="NO"
+            else
+               WALLTEST="OK"
+            fi
+         else
+            WALLTEST="NO"
+         fi;;
+      s) if [ $POSY -lt $(( $MAXY - 1 )) ]; then
+            WALLTEST="OK"
+         else
+            WALLTEST="NO"
+         fi;;
+      d) if [ $POSX -lt $(( $MAXX - 1 )) ]; then
+            WALLTEST="OK"
+         else
+            if [ $POSY -gt 19 ] && [ $POSY -lt 24 ] && [ $OPEN == "YES" ]; then
+               WALLTEST="OK"
+               clear
+               remove
+               POSX=$MINX
+               tput cup $POSY $POSX
+               place
+               AREA=2
+               drawarea
+            else
+               WALLTEST="NO"
+            fi
+         fi;;
+   esac
+   
+}
+testmove2(){
+case "$key" in
+      w) if [ $POSY -gt $(( $MINY + 1 )) ]; then
+            WALLTEST="OK"
+         else
+            WALLTEST="NO"
+         fi;;
+      d) if [ $POSX -lt $(( $MAXX - 1 )) ]; then
+            WALLTEST="OK"
+         else
+            WALLTEST="NO"
+         fi;;
+      s) if [ $POSY -lt $(( $MAXY - 1 )) ]; then
+            WALLTEST="OK"
+         else
+            WALLTEST="NO"
+         fi;;
+      a) if [ $POSX -gt $(( $MINX + 1 )) ]; then
+            WALLTEST="OK"
+         else
+            if [ $POSY -gt 19 ] && [ $POSY -lt 24 ]; then
+               WALLTEST="OK"
+               clear
+               remove
+               POSX=$MAXX
+               tput cup $POSY $POSX
+               place
+               AREA=1
+               drawarea
+            else
+               WALLTEST="NO"
+            fi
+         fi;;
+   esac
+}
+
+place(){
+   tput cup $POSY $POSX
+   printf %b "$POS"
+}
+remove(){
+   tput cup $POSY $POSX
+   printf %b " "
+}
+
+combat(){
+   chardata
+   while [ "$WIN" == "NO" ]; do
+      while [ "$key" == " " ]; do
+         read -s -n 1 key
+      done
+      case "$key" in
+         j) swordattack
+            combatdata
+            if [ "$WIN" == "NO" ]; then
+               case "$USES" in
+                  STR) enemyattack;;
+                  MAG) enemyspell;;
+               esac
+               ecombatdata
+               if [ "$CHP" -le 0 ]; then
+                  LOSE="YES"
+               fi
+               MHPU=$(( $MHPU + 1 ))
+            fi
+            ;;
+         k) if [ $CMP -ge 3 ]; then
+               spellattack
+               combatdata
+               if [ "$WIN" == "NO" ]; then
+               case "$USES" in
+                  STR) enemyattack;;
+                  MAG) enemyspell;;
+               esac
+               ecombatdata
+               fi
+            else
+               tput cup $(( $MAXY - 2 )) $(( $MINX + 8 ))
+               echo "Not enough MP"
+               sleep 0.75
+               y=$(( $MAXY - 2 ))
+               x=$(( $MINX + 1 ))
+               tput cup $y $x
+               while [ "$(( $x + 1 ))" -le "$(( $MAXX - 1 ))" ]; do
+                  printf %b " "
+                  x=$(( $x + 1 ));
+               done
+            fi
+            ;;
+         l) if [ $CMP -ge 2 ]; then
+               spellheal
+               combatdata
+               if [ "$WIN" == "NO" ]; then
+               case "$USES" in
+                  STR) enemyattack;;
+                  MAG) enemyspell;;
+               esac
+               ecombatdata
+               fi
+            else
+               tput cup $(( $MAXY - 2 )) $(( $MINX + 8 ))
+               echo "Not enough MP"
+               sleep 0.75
+               y=$(( $MAXY - 2 ))
+               x=$(( $MINX + 1 ))
+               tput cup $y $x
+               while [ "$(( $x + 1 ))" -le "$(( $MAXX - 1 ))" ]; do
+                  printf %b " "
+                  x=$(( $x + 1 ));
+               done
+            fi
+            ;;
+      esac
+      key=" "
+      chardata
+      if [ "$LOSE" == "YES" ]; then
+         y=$(( $MAXY - 2 ))
+         x=$(( $MINX + 8 ))
+         tput cup $y $x
+         echo "You have lost"
+         WIN="YES"
+         sleep 1         
+      fi
+   done
+   if [ "$LOSE" == "NO" ]; then
+      improve
+      WIN="NO"
+      CMP=$(( $CMP +$(( $MMP / 4 )) ))
+      if [ "$CMP" -gt $(( $MMP )) ]; then
+         CMP=$MMP
+      fi
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "Recovered $(( $MMP / 4 )) MP"
+      sleep 0.75
+      y=$(( $MAXY - 2 ))
+      x=$(( $MINX + 8 ))
+      tput cup $y $x
+      echo -e "                      "
+      drawarea
+   fi
+}
+combatdata(){
+   y=$(( $MAXY - 2 ))
+   x=$(( $MINX + 8 ))
+   tput cup $y $x
+   case "$key" in
+      l) echo -e "Recovered $(( $(( $MAG )) + $(( $(( $HRANK - 1 )) * 2 )) )) HP";;
+      j) if [ "$STR" -gt "$EDEF" ]; then
+            echo -e "Dealt $(( $STR - $(( $EDEF )) )) damage"
+         else
+            echo -e "Dealt 1 damage"
+         fi;;
+      k) if [ "$MAGDMG" -gt "$(( $EMGD ))" ]; then
+            echo -e "Dealt $(( $(( $MAGDMG )) - $(( $EMGD )) )) damage"
+         else
+            echo -e "Dealt 1 damage"
+         fi;;
+   esac
+   chardata
+   sleep 0.75
+   y=$(( $MAXY - 2 ))
+   x=$(( $MINX + 1 ))
+   tput cup $y $x
+   while [ "$(( $x + 1 ))" -le "$(( $MAXX - 1 ))" ]; do
+      printf %b " "
+      x=$(( $x + 1 ));
+   done
+}
+ecombatdata(){
+   x=$MINX
+   y=$(( $MAXY - 4 ))
+   tput cup $y $x
+   while [ "$x" -le "$MAXX" ]; do
+      printf %b "$WALLCHAR"
+      x=$(( $x + 1 ));
+   done
+   y=$(( $MAXY - 2 ))
+   x=$(( $MINX + 8 ))
+   tput cup $y $x
+   case "$USES" in
+      STR) if [ "$ESTR" -gt "$(( $DEF ))" ]; then
+              echo -e "Recieved $(( $ESTR - $(( $DEF )) )) damage"
+           else
+              echo -e "Recieved $(( $CHP - 1 )) damage"
+           fi;;
+      MAG) if [ "$EMAG" -gt "$(( $MGD ))" ]; then
+              echo -e "Recieved $(( $EMAG - $(( $MGD )) )) damage"
+           else
+              echo -e "Recieved $(( $CHP - 1 )) damage"
+           fi;;
+   esac
+   chardata
+   sleep 0.75
+   y=$(( $MAXY - 2 ))
+   x=$(( $MINX + 1 ))
+   tput cup $y $x
+   while [ "$(( $x + 1 ))" -le "$(( $MAXX - 1 ))" ]; do
+      printf %b " "
+      x=$(( $x + 1 ));
+   done
+}
+endcombat(){
+   x=8
+   y=8
+   tput cup $y $x
+   echo -e "                 "
+   tput cup $(( $y + 1 )) $x
+   echo -e "                 "
+   tput cup $(( $y + 3 )) $x
+   echo -e "                                "
+   tput cup $(( $y + 4 )) $x
+   echo -e "                                "
+   tput cup $(( $y + 5 )) $x
+   echo -e "                                "
+   x=8
+   y=17
+   tput cup $y $x
+   echo -e "                 "
+   tput cup $(( $y + 1 )) $x
+   echo -e "                 "
+   x=$(( $MINX + 1 ))
+   y=$(( $MAXY - 4 ))
+   tput cup $y $x
+   while [ "$x" -lt "$MAXX" ]; do
+      printf %b " "
+      x=$(( $x + 1 ));
+   done
+   KILLCOUNT=$(( $KILLCOUNT + 1 ))
+}
+
+chardata(){
+   x=8
+   y=8
+   tput cup $y $x
+   echo -e "                 "
+   tput cup $y $x
+   if [ "$CHP" -gt 0 ]; then
+      echo -e "HP: $CHP/$MHP"
+   else
+      echo -e "HP: 0/$MHP"
+   fi
+   tput cup $(( $y + 1 )) $x
+   echo -e "                 "
+   tput cup $(( $y + 1 )) $x
+   echo -e "MP: $CMP/$MMP"
+   tput cup $(( $y + 3 )) $x
+   echo -e "J: Attack"
+   tput cup $(( $y + 4 )) $x
+   echo -e "K: Attack spell"
+   tput cup $(( $y + 5 )) $x
+   echo -e "L: Heal spell - $(( $MAG + ($HRANK - 1) * 2 )) recovery"
+
+   x=8
+   y=17
+   tput cup $y $x
+   echo -e "                 "
+   tput cup $y $x
+   echo -e "$ENAME"
+   tput cup $(( $y + 1 )) $x
+   echo -e "                 "
+   tput cup $(( $y + 1 )) $x
+   if [ "$ECHP" -gt 0 ]; then
+      echo -e "HP: $ECHP/$EMHP"
+   else
+      echo -e "HP: 0/$EMHP"
+   fi
+}
+status(){
+   clear
+   x=5
+   y=5
+   tput cup $y $x
+   printf -v a "%02d" $CHP
+   echo -e "HP:    $a/$MHP"
+   x=5
+   y=7
+   tput cup $y $x
+   printf -v a "%02d" $CMP
+   echo -e "MP:    $CMP/$MMP"
+   x=5
+   y=9
+   tput cup $y $x
+   echo -e "STR:   $STR"
+   x=20
+   y=9
+   tput cup $y $x
+   echo "Attack damage, modified by enemy defence"
+   x=5
+   y=11
+   tput cup $y $x
+   echo -e "MAG:   $MAG"
+   x=20
+   y=11
+   tput cup $y $x
+   echo "Determines Spell Attack damage and Heal amount"
+   x=5
+   y=13
+   tput cup $y $x
+   echo -e "Attack Spell Rank: $MRANK"
+   x=32
+   y=13
+   tput cup $y $x
+   echo "Every point increases Spell Attack damage by 3"
+   x=5
+   y=15
+   tput cup $y $x
+   echo -e "Heal Spell rank: $HRANK"
+   x=32
+   y=15
+   tput cup $y $x
+   echo "Every point increases Spell Heal amount by 2"
+   x=5
+   y=17
+   tput cup $y $x
+   echo -e "Spell Attack damage: $(( $MAG + $(( $MRANK * 3 )) )), modified by enemy defence"
+   x=5
+   y=19
+   tput cup $y $x
+   echo -e "Heal Spell amount:   $(( $MAG + $(( $HRANK * 2 )) ))"
+   x=5
+   y=21
+   tput cup $y $x
+   echo -e "Killcount: $KILLCOUNT"
+   x=25
+   y=27
+   tput cup $y $x
+   echo -e "Press ENTER to continue"
+   read
+   clear
+   drawarea
+   place
+}
+
+
+clear
+tput civis
+stty -echo
+
+echo "
+  Controls:
+  
+    Out of combat:
+    [w a s d] - movement
+    [j] - While in front of the door, talk
+    [k] - Character status
+    [l] - Heal Spell, uses 2 MP, does not improve MAG or Heal Spell Rank
+  
+    In combat
+    [j] - Basic attack
+    [k] - Attack Spell, uses 3 MP
+    [l] - Heal Spell, uses 2 MP
+
+  Press ENTER to continue"
+
+read
+clear
+#drawborder
+#draw1
+drawarea
+walk
+y=$(( $MAXY + 1 ))
+x=$MINX
+tput cup $y $x
+clear
+tput cvvis
+stty echo
